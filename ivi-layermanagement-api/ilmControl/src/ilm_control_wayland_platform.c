@@ -1894,6 +1894,10 @@ ilm_layerSetDimension(t_ilm_layer layerId, t_ilm_uint *pDimension)
                 ctx_layer->controller,
                 ctx_layer->prop.destX, ctx_layer->prop.destY,
                 (int32_t)*pDimension, (int32_t)*(pDimension + 1));
+            ivi_controller_layer_set_source_rectangle(
+                ctx_layer->controller,
+                ctx_layer->prop.sourceX, ctx_layer->prop.sourceY,
+                (int32_t)*pDimension, (int32_t)*(pDimension + 1));
             returnValue = ILM_SUCCESS;
         }
     }
@@ -2185,6 +2189,9 @@ ilm_surfaceSetDimension(t_ilm_surface surfaceId, t_ilm_uint *pDimension)
             ivi_controller_surface_set_destination_rectangle(
                 ctx_surf->controller,
                 ctx_surf->prop.destX, ctx_surf->prop.destY, width, height);
+            ivi_controller_surface_set_source_rectangle(
+                ctx_surf->controller,
+                ctx_surf->prop.sourceX, ctx_surf->prop.sourceY, width, height);
             returnValue = ILM_SUCCESS;
         }
     }
