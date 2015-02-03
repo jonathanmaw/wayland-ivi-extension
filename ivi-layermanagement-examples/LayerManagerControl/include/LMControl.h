@@ -254,8 +254,6 @@ void getCommunicatorPerformance();
 void testNotificationLayer(t_ilm_layer layerid);
 void watchLayer(unsigned int* layerids, unsigned int layeridCount);
 void watchSurface(unsigned int* surfaceids, unsigned int surfaceidCount);
-void setOptimization(t_ilm_uint id, t_ilm_uint mode);
-void getOptimization(t_ilm_uint id);
 
 
 //=============================================================================
