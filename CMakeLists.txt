@@ -36,6 +36,7 @@ add_subdirectory(ivi-layermanagement-api/ilmControl)
 add_subdirectory(ivi-layermanagement-api/test)
 add_subdirectory(ivi-layermanagement-examples)
 
+add_subdirectory(ivi-input-controller)
 
 #=============================================================================================
 # generate all documents
