@@ -40,6 +40,7 @@ link_directories(
 
 add_library(${PROJECT_NAME} SHARED
     src/ilm_control_wayland_platform.c
+    src/ilm_control_input.c
 )
 
 add_dependencies(${PROJECT_NAME}
@@ -66,6 +67,7 @@ install (
 
 install (
     FILES       ${CMAKE_SOURCE_DIR}/ivi-layermanagement-api/ilmControl/include/ilm_control.h
+                ${CMAKE_SOURCE_DIR}/ivi-layermanagement-api/ilmControl/include/ilm_control_input.h
     DESTINATION include/ilm
 )
 
