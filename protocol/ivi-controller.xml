@@ -630,8 +630,6 @@
             <arg name="error_code" type="int"/>
             <arg name="error_text" type="string" allow-null="true"/>
         </event>
-
     </interface>
-
 </protocol>
 

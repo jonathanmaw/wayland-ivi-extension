@@ -147,6 +147,9 @@ struct wayland_context {
     struct wl_list list_surface;
     struct wl_list list_layer;
     struct wl_list list_screen;
+    struct wl_list list_seat;
+
+    struct ivi_controller_input *input_controller;
 };
 
 struct ilm_control_context {
@@ -162,6 +165,13 @@ struct ilm_control_context {
     int shutdown_fd;
     uint32_t internal_id_surface;
 };
+
+struct seat_context {
+    struct wl_list link;
+    char *seat_name;
+    ilmInputDevice capabilities;
+};
+
 
 ilmErrorTypes impl_sync_and_acquire_instance(struct ilm_control_context *ctx);
 

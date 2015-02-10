@@ -32,6 +32,7 @@
 #include "ilm_control_platform.h"
 #include "wayland-util.h"
 #include "ivi-controller-client-protocol.h"
+#include "ivi-controller-input-client-protocol.h"
 
 /* GCC visibility */
 #if defined(__GNUC__) && __GNUC__ >= 4
@@ -866,6 +867,78 @@ static struct ivi_controller_listener controller_listener= {
     controller_listener_error
 };
 
+static struct seat_context *
+find_seat(struct wl_list *list, const char *name)
+{
+    struct seat_context *seat;
+    wl_list_for_each(seat, list, link) {
+        if (strcmp(name, seat->seat_name) == 0)
+            return seat;
+    }
+    return NULL;
+}
+
+static void
+input_listener_seat_created(void *data,
+                            struct ivi_controller_input *ivi_controller_input,
+                            const char *name,
+                            uint32_t capabilities)
+{
+    struct wayland_context *ctx = data;
+    struct seat_context *seat;
+    seat = find_seat(&ctx->list_seat, name);
+    if (seat) {
+        fprintf(stderr, "Warning: seat context was created twice!\n");
+        seat->capabilities = capabilities;
+        return;
+    }
+    seat = calloc(1, sizeof *seat);
+    if (seat == NULL) {
+        fprintf(stderr, "Failed to allocate memory for seat context\n");
+        return;
+    }
+    seat->seat_name = strdup(name);
+    seat->capabilities = capabilities;
+    wl_list_insert(&ctx->list_seat, &seat->link);
+}
+
+static void
+input_listener_seat_capabilities(void *data,
+                                 struct ivi_controller_input *ivi_controller_input,
+                                 const char *name,
+                                 uint32_t capabilities)
+{
+    struct wayland_context *ctx = data;
+    struct seat_context *seat = find_seat(&ctx->list_seat, name);
+    if (seat == NULL) {
+        fprintf(stderr, "Warning: Cannot find seat for name %s\n", name);
+        return;
+    }
+    seat->capabilities = capabilities;
+}
+
+static void
+input_listener_seat_destroyed(void *data,
+                              struct ivi_controller_input *ivi_controller_input,
+                              const char *name)
+{
+    struct wayland_context *ctx = data;
+    struct seat_context *seat = find_seat(&ctx->list_seat, name);
+    if (seat == NULL) {
+        fprintf(stderr, "Warning: Cannot find seat %s to delete it\n", name);
+        return;
+    }
+    free(seat->seat_name);
+    wl_list_remove(&seat->link);
+    free(seat);
+}
+
+static struct ivi_controller_input_listener input_listener = {
+    input_listener_seat_created,
+    input_listener_seat_capabilities,
+    input_listener_seat_destroyed
+};
+
 static void
 registry_handle_control(void *data,
                        struct wl_registry *registry,
@@ -886,6 +959,19 @@ registry_handle_control(void *data,
                                        &controller_listener,
                                        ctx)) {
             fprintf(stderr, "Failed to add ivi_controller listener\n");
+            return;
+        }
+    } else if (strcmp(interface, "ivi_controller_input") == 0) {
+        ctx->input_controller =
+            wl_registry_bind(registry, name, &ivi_controller_input_interface, 1);
+
+        if (ctx->input_controller == NULL) {
+            fprintf(stderr, "Failed to registry bind input controller\n");
+            return;
+        }
+        if (ivi_controller_input_add_listener(ctx->input_controller,
+                                              &input_listener, ctx)) {
+            fprintf(stderr, "Failed to add ivi_controller_input listener\n");
             return;
         }
     } else if (strcmp(interface, "wl_output") == 0) {
@@ -1056,6 +1142,7 @@ ilmControl_init(t_ilm_nativedisplay nativedisplay)
     wl_list_init(&ctx->wl.list_screen);
     wl_list_init(&ctx->wl.list_layer);
     wl_list_init(&ctx->wl.list_surface);
+    wl_list_init(&ctx->wl.list_seat);
 
     {
        pthread_mutexattr_t a;
