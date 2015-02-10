@@ -27,10 +27,12 @@ pkg_check_modules(WESTON weston REQUIRED)
 pkg_check_modules(PIXMAN pixman-1 REQUIRED)
 
 GET_TARGET_PROPERTY(IVI_EXTENSION_INCLUDE_DIRS ivi-extension-protocol INCLUDE_DIRECTORIES)
+GET_TARGET_PROPERTY(ILM_COMMON_INCLUDE_DIRS ilmCommon INCLUDE_DIRECTORIES)
 
 include_directories(
     include
     ${IVI_EXTENSION_INCLUDE_DIRS}
+    ${ILM_COMMON_INCLUDE_DIRS}
     ${WAYLAND_SERVER_INCLUDE_DIRS}
     ${WESTON_INCLUDE_DIRS}
     ${WESTON_INCLUDE_DIRS}/weston
@@ -53,6 +55,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "")
 
 add_dependencies(${PROJECT_NAME}
     ivi-extension-protocol
+    ilmCommon
     ${WAYLAND_SERVER_LIBRARIES}
     ${WESTON_LIBRARIES}
     ${PIXMAN_LIBRARIES}

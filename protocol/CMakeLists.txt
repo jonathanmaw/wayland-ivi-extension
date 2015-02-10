@@ -151,4 +151,3 @@ add_custom_target(ivi-controller-doc
 
                   COMMENT "Generating ivi-controller-api-${IVI_EXTENSION_VERSION}.pdf"
 )
-
