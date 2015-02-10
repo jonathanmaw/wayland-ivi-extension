@@ -23,8 +23,12 @@
 #include <stdlib.h>
 
 #include "weston/compositor.h"
+#include "ilm_types.h"
+
+#include "ivi-controller-server-protocol.h"
 
 struct seat_ctx {
+    struct input_context *input_ctx;
     struct weston_keyboard_grab keyboard_grab;
     struct weston_pointer_grab pointer_grab;
     struct weston_touch_grab touch_grab;
@@ -32,7 +36,18 @@ struct seat_ctx {
     struct wl_listener destroy_listener;
 };
 
-static struct wl_listener g_seat_create_listener;
+struct input_controller {
+    struct wl_list link;
+    struct wl_resource *resource;
+    struct wl_client *client;
+    uint32_t id;
+};
+
+struct input_context {
+    struct wl_listener seat_create_listener;
+    struct wl_list controller_list;
+    struct weston_compositor *compositor;
+};
 
 static void
 keyboard_grab_key(struct weston_keyboard_grab *grab, uint32_t time,
@@ -122,12 +137,26 @@ static struct weston_touch_grab_interface touch_grab_interface = {
     touch_grab_cancel
 };
 
+static uint32_t
+get_seat_capabilities(const struct weston_seat *seat)
+{
+    uint32_t caps = 0;
+    if (seat->keyboard_device_count > 0)
+        caps |= ILM_INPUT_DEVICE_KEYBOARD;
+    if (seat->pointer_device_count > 0)
+        caps |= ILM_INPUT_DEVICE_POINTER;
+    if (seat->touch_device_count > 0)
+        caps |= ILM_INPUT_DEVICE_TOUCH;
+    return caps;
+}
+
 static void
 handle_seat_updated_caps(struct wl_listener *listener, void *data)
 {
     struct weston_seat *seat = data;
     struct seat_ctx *ctx = wl_container_of(listener, ctx,
                                            updated_caps_listener);
+    struct input_controller *controller;
     if (seat->keyboard && seat->keyboard != ctx->keyboard_grab.keyboard) {
         weston_keyboard_start_grab(seat->keyboard, &ctx->keyboard_grab);
     }
@@ -137,12 +166,20 @@ handle_seat_updated_caps(struct wl_listener *listener, void *data)
     if (seat->touch && seat->touch != ctx->touch_grab.touch) {
         weston_touch_start_grab(seat->touch, &ctx->touch_grab);
     }
+
+    wl_list_for_each(controller, &ctx->input_ctx->controller_list, link) {
+        ivi_controller_input_send_seat_capabilities(controller->resource,
+                                                    seat->seat_name,
+                                                    get_seat_capabilities(seat));
+    }
 }
 
 static void
 handle_seat_destroy(struct wl_listener *listener, void *data)
 {
     struct seat_ctx *ctx = wl_container_of(listener, ctx, destroy_listener);
+    struct weston_seat *seat = data;
+    struct input_controller *controller;
 
     if (ctx->keyboard_grab.keyboard)
         keyboard_grab_cancel(&ctx->keyboard_grab);
@@ -151,6 +188,11 @@ handle_seat_destroy(struct wl_listener *listener, void *data)
     if (ctx->touch_grab.touch)
         touch_grab_cancel(&ctx->touch_grab);
 
+    wl_list_for_each(controller, &ctx->input_ctx->controller_list, link) {
+        ivi_controller_input_send_seat_destroyed(controller->resource,
+                                                 seat->seat_name);
+    }
+
     free(ctx);
 }
 
@@ -158,11 +200,16 @@ static void
 handle_seat_create(struct wl_listener *listener, void *data)
 {
     struct weston_seat *seat = data;
+    struct input_context *input_ctx = wl_container_of(listener, input_ctx,
+                                                      seat_create_listener);
+    struct input_controller *controller;
     struct seat_ctx *ctx = calloc(1, sizeof *ctx);
     if (ctx == NULL) {
         weston_log("%s: Failed to allocate memory\n", __FUNCTION__);
         return;
     }
+
+    ctx->input_ctx = input_ctx;
 
     ctx->keyboard_grab.interface = &keyboard_grab_interface;
     ctx->pointer_grab.interface = &pointer_grab_interface;
@@ -173,21 +220,92 @@ handle_seat_create(struct wl_listener *listener, void *data)
 
     ctx->updated_caps_listener.notify = &handle_seat_updated_caps;
     wl_signal_add(&seat->updated_caps_signal, &ctx->updated_caps_listener);
+
+    wl_list_for_each(controller, &input_ctx->controller_list, link) {
+        ivi_controller_input_send_seat_created(controller->resource,
+                                               seat->seat_name,
+                                               get_seat_capabilities(seat));
+    }
+}
+
+static void
+unbind_resource_controller(struct wl_resource *resource)
+{
+    struct input_controller *controller = wl_resource_get_user_data(resource);
+    
+    wl_list_remove(&controller->link);
+
+    free(controller);
+}
+
+static void
+bind_ivi_input(struct wl_client *client, void *data,
+               uint32_t version, uint32_t id)
+{
+    struct input_context *ctx = data;
+    struct input_controller *controller;
+    struct weston_seat *seat;
+    controller = calloc(1, sizeof *controller);
+    if (controller == NULL) {
+        weston_log("%s: Failed to allocate memory for controller\n",
+                   __FUNCTION__);
+        return;
+    }
+
+    controller->resource =
+        wl_resource_create(client, &ivi_controller_input_interface, 1, id);
+    wl_resource_set_implementation(controller->resource, NULL,
+                                   controller, unbind_resource_controller);
+
+    controller->client = client;
+    controller->id = id;
+
+    wl_list_insert(&ctx->controller_list, &controller->link);
+
+    /* Send seat events for all known seats to the client */
+    wl_list_for_each(seat, &ctx->compositor->seat_list, link) {
+        ivi_controller_input_send_seat_created(controller->resource,
+                                               seat->seat_name,
+                                               get_seat_capabilities(seat));
+    }
+}
+
+static struct input_context *
+create_input_context(struct weston_compositor *ec)
+{
+    struct input_context *ctx = NULL;
+    struct weston_seat *seat;
+    ctx = calloc(1, sizeof *ctx);
+    if (ctx == NULL) {
+        weston_log("%s: Failed to allocate memory for input context\n",
+                   __FUNCTION__);
+        return NULL;
+    }
+
+    ctx->compositor = ec;
+    wl_list_init(&ctx->controller_list);
+    ctx->seat_create_listener.notify = &handle_seat_create;
+    wl_signal_add(&ec->seat_created_signal, &ctx->seat_create_listener);
+
+    wl_list_for_each(seat, &ec->seat_list, link) {
+        handle_seat_create(&ctx->seat_create_listener, seat);
+        wl_signal_emit(&seat->updated_caps_signal, seat);
+    }
+    return ctx;
 }
 
 WL_EXPORT int
 module_init(struct weston_compositor *ec, int* argc, char *argv[])
 {
-    struct weston_seat *seat;
+    struct input_context *ctx = create_input_context(ec);
+    if (ctx == NULL) {
+        weston_log("%s: Failed to create input context\n", __FUNCTION__);
+        return -1;
+    }
 
-    /* Listen to seat creation */
-    g_seat_create_listener.notify = &handle_seat_create;
-    wl_signal_add(&ec->seat_created_signal, &g_seat_create_listener);
-
-    /* Handle all pre-existing seats */
-    wl_list_for_each(seat, &ec->seat_list, link) {
-        handle_seat_create (NULL, seat);
-        wl_signal_emit(&seat->updated_caps_signal, seat);
+    if (wl_global_create(ec->wl_display, &ivi_controller_input_interface, 1,
+                         ctx, bind_ivi_input) == NULL) {
+        return -1;
     }
     weston_log("ivi-input-controller module loaded successfully!\n");
     return 0;
