@@ -633,5 +633,29 @@
 
     </interface>
 
+    <interface name="ivi_controller_input" version="1">
+        <description summary="controller interface to the input system">
+            This includes handling the existence of seats, seat capabilities,
+            seat acceptance and input focus.
+        </description>
+        <event name="seat_created">
+            <description summary="A new seat has appeared">
+            </description>
+            <arg name="name" type="string"/>
+            <arg name="capabilities" type="uint"/>
+        </event>
+        <event name="seat_capabilities">
+            <description summary="A seat's capabilities have changed">
+            </description>
+            <arg name="name" type="string"/>
+            <arg name="capabilities" type="uint"/>
+        </event>
+        <event name="seat_destroyed">
+            <description summary="A seat is no longer available">
+            </description>
+            <arg name="name" type="string"/>
+        </event>
+    </interface>
+
 </protocol>
 
