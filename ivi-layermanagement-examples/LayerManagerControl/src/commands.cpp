@@ -101,6 +101,26 @@ COMMAND("get input devices with pointer|keyboard|touch|all")
     free(seats);
 }
 
+//=============================================================================
+COMMAND("get input device <name> capabilities")
+//=============================================================================
+{
+    ilmInputDevice bitmask;
+    ilmErrorTypes callResult =
+        ilm_getInputDeviceCapabilities((char*)input->getString("name").c_str(), &bitmask);
+    if (ILM_SUCCESS != callResult)
+    {
+        cout << "LayerManagerService returned: " << ILM_ERROR_STRING(callResult) << "\n";
+        cout << "Failed to get capabilities for device " << input->getString("name") << "\n";
+        return;
+    }
+    if (bitmask & ILM_INPUT_DEVICE_POINTER)
+        cout << "pointer" << endl;
+    if (bitmask & ILM_INPUT_DEVICE_KEYBOARD)
+        cout << "keyboard" << endl;
+    if (bitmask & ILM_INPUT_DEVICE_TOUCH)
+        cout << "touch" << endl;
+}
 
 //=============================================================================
 COMMAND("get scene|screens|layers|surfaces")
