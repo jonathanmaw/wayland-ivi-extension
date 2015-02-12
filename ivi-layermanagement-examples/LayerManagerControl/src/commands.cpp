@@ -18,6 +18,7 @@
  ****************************************************************************/
 #include "ilm_client.h"
 #include "ilm_control.h"
+#include "ilm_control_input.h"
 #include "LMControl.h"
 #include "Expression.h"
 #include "ExpressionInterpreter.h"
@@ -66,6 +67,40 @@ COMMAND("tree")
     ExpressionInterpreter::printExpressionTree();
     cout << "\n";
 }
+
+//=============================================================================
+COMMAND("get input devices with pointer|keyboard|touch|all")
+//=============================================================================
+{
+    t_ilm_uint num_seats = 0;
+    t_ilm_string *seats;
+    ilmInputDevice mask = 0;
+
+    if (input->contains("pointer"))
+        mask |= ILM_INPUT_DEVICE_POINTER;
+    if (input->contains("keyboard"))
+        mask |= ILM_INPUT_DEVICE_KEYBOARD;
+    if (input->contains("touch"))
+        mask |= ILM_INPUT_DEVICE_TOUCH;
+    if (input->contains("all"))
+        mask |= ILM_INPUT_DEVICE_ALL;
+
+    ilmErrorTypes callResult = ilm_getInputDevices(mask, &num_seats, &seats);
+    if (ILM_SUCCESS != callResult)
+    {
+        cout << "LayerManagerService returned: " << ILM_ERROR_STRING(callResult) << "\n";
+        cout << "Failed to get input devices for mask " << input->getUint("mask") << "\n";
+        return;
+    }
+
+    for(unsigned int i = 0; i < num_seats; i++) {
+        cout << seats[i] << endl;
+        free(seats[i]);
+    }
+
+    free(seats);
+}
+
 
 //=============================================================================
 COMMAND("get scene|screens|layers|surfaces")
