@@ -1064,18 +1064,6 @@ controller_surface_destroy(struct wl_client *client,
     wl_resource_destroy(resource);
 }
 
-static void
-controller_surface_set_input_focus(struct wl_client *client,
-              struct wl_resource *resource,
-              uint32_t device,
-              int32_t enabled)
-{
-    (void)client;
-    struct ivisurface *ivisurf = wl_resource_get_user_data(resource);
-
-    /* TODO: Update this for the new input focus API */
-}
-
 static const
 struct ivi_controller_surface_interface controller_surface_implementation = {
     controller_surface_set_visibility,
@@ -1086,8 +1074,7 @@ struct ivi_controller_surface_interface controller_surface_implementation = {
     controller_surface_set_orientation,
     controller_surface_screenshot,
     controller_surface_send_stats,
-    controller_surface_destroy,
-    controller_surface_set_input_focus
+    controller_surface_destroy
 };
 
 static void
