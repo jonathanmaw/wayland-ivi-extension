@@ -26,6 +26,7 @@
 #include "ilm_types.h"
 
 #include "ivi-controller-server-protocol.h"
+#include "ivi-layout-export.h"
 
 struct seat_ctx {
     struct input_context *input_ctx;
@@ -34,6 +35,12 @@ struct seat_ctx {
     struct weston_touch_grab touch_grab;
     struct wl_listener updated_caps_listener;
     struct wl_listener destroy_listener;
+};
+
+struct surface_ctx {
+    struct wl_list link;
+    ilmInputDevice focus;
+    struct ivi_layout_surface *layout_surface;
 };
 
 struct input_controller {
@@ -46,6 +53,7 @@ struct input_controller {
 struct input_context {
     struct wl_listener seat_create_listener;
     struct wl_list controller_list;
+    struct wl_list surface_list;
     struct weston_compositor *compositor;
 };
 
@@ -229,6 +237,53 @@ handle_seat_create(struct wl_listener *listener, void *data)
 }
 
 static void
+handle_surface_destroy(struct ivi_layout_surface *layout_surface, void *data)
+{
+    struct input_context *ctx = data;
+    struct surface_ctx *surf, *next;
+    int surface_removed = 0;
+
+    wl_list_for_each_safe(surf, next, &ctx->surface_list, link) {
+        if (surf->layout_surface == layout_surface) {
+            wl_list_remove(&surf->link);
+            free(surf);
+            surface_removed = 1;
+            break;
+        }
+    }
+
+    if (!surface_removed) {
+        weston_log("%s: Warning! surface %d already destroyed\n", __FUNCTION__,
+                   ivi_layout_getIdOfSurface(layout_surface));
+    }
+}
+
+static void
+handle_surface_create(struct ivi_layout_surface *layout_surface, void *data)
+{
+    struct input_context *input_ctx = data;
+    struct surface_ctx *ctx;
+
+    wl_list_for_each(ctx, &input_ctx->surface_list, link) {
+        if (ctx->layout_surface == layout_surface) {
+            weston_log("%s: Warning! surface context already created for"
+                       " surface %d\n", __FUNCTION__,
+                       ivi_layout_getIdOfSurface(layout_surface));
+            break;
+        }
+    }
+
+    ctx = calloc(1, sizeof *ctx);
+    if (ctx == NULL) {
+        weston_log("%s: Failed to allocate memory\n", __FUNCTION__);
+        return;
+    }
+    ctx->layout_surface = layout_surface;
+
+    wl_list_insert(&input_ctx->surface_list, &ctx->link);
+}
+
+static void
 unbind_resource_controller(struct wl_resource *resource)
 {
     struct input_controller *controller = wl_resource_get_user_data(resource);
@@ -284,6 +339,13 @@ create_input_context(struct weston_compositor *ec)
 
     ctx->compositor = ec;
     wl_list_init(&ctx->controller_list);
+    wl_list_init(&ctx->surface_list);
+
+    /* Add signal handlers for ivi surfaces. Warning: these functions leak
+     * memory. */
+    ivi_layout_addNotificationCreateSurface(handle_surface_create, ctx);
+    ivi_layout_addNotificationRemoveSurface(handle_surface_destroy, ctx);
+
     ctx->seat_create_listener.notify = &handle_seat_create;
     wl_signal_add(&ec->seat_created_signal, &ctx->seat_create_listener);
 
@@ -291,6 +353,7 @@ create_input_context(struct weston_compositor *ec)
         handle_seat_create(&ctx->seat_create_listener, seat);
         wl_signal_emit(&seat->updated_caps_signal, seat);
     }
+
     return ctx;
 }
 
