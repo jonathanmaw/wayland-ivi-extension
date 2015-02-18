@@ -40,24 +40,6 @@
 #define ILM_EXPORT
 #endif
 
-struct surface_context {
-    struct wl_list link;
-
-    struct ivi_surface *surface;
-    struct ivi_controller_surface *controller;
-
-    t_ilm_uint id_surface;
-    struct ilmSurfaceProperties prop;
-    surfaceNotificationFunc notification;
-
-    struct {
-        struct wl_list link;
-    } order;
-
-    struct wayland_context *ctx;
-    bool is_surface_creation_noticed;
-};
-
 struct layer_context {
     struct wl_list link;
 
