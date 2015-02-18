@@ -102,6 +102,45 @@ COMMAND("get input devices with pointer|keyboard|touch|all")
 }
 
 //=============================================================================
+COMMAND("set|unset surfaces [<idarray>] input focus pointer|keyboard|touch|all")
+//=============================================================================
+{
+    t_ilm_surface *surfaceIDs;
+    t_ilm_uint num_surfaces;
+    ilmInputDevice bitmask = 0;
+    t_ilm_bool is_set;
+
+    if (input->contains("set"))
+        is_set = ILM_TRUE;
+    else
+        is_set = ILM_FALSE;
+
+    if (input->contains("pointer"))
+        bitmask |= ILM_INPUT_DEVICE_POINTER;
+    if (input->contains("keyboard"))
+        bitmask |= ILM_INPUT_DEVICE_KEYBOARD;
+    if (input->contains("touch"))
+        bitmask |= ILM_INPUT_DEVICE_TOUCH;
+    if (input->contains("all"))
+        bitmask |= ILM_INPUT_DEVICE_ALL;
+
+    input->getUintArray("idarray", &surfaceIDs, &num_surfaces);
+
+    cout << "setting input focus in LayerManagerControl" << endl;
+    ilmErrorTypes callResult =
+        ilm_setInputFocus(surfaceIDs, num_surfaces, bitmask, is_set);
+    if (ILM_SUCCESS != callResult)
+    {
+        cout << "LayerManagerService returned: " << ILM_ERROR_STRING(callResult) << endl;
+        cout << "Failed to set input focus" << endl;
+    }
+    else
+    {
+        cout << "LayerManagerService succeeded" << endl;
+    }
+}
+
+//=============================================================================
 COMMAND("get input device <name> capabilities")
 //=============================================================================
 {

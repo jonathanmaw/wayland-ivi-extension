@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ivi-controller-input-client-protocol.h"
 #include "ilm_control_input.h"
 #include "ilm_control_platform.h"
 
@@ -113,7 +114,30 @@ ILM_EXPORT ilmErrorTypes
 ilm_setInputFocus(t_ilm_surface *surfaceIDs, t_ilm_uint num_surfaces,
                   ilmInputDevice bitmask, t_ilm_bool is_set)
 {
-    return ILM_FAILED;
+    struct ilm_control_context *ctx = sync_and_acquire_instance();
+    int i;
+
+    for (i = 0; i < num_surfaces; i++) {
+        struct surface_context *ctx_surf;
+        int found_surface = 0;
+        wl_list_for_each(ctx_surf, &ctx->wl.list_surface, link) {
+            if (ctx_surf->id_surface == surfaceIDs[i]) {
+                found_surface = 1;
+                break;
+            }
+        }
+
+        if (!found_surface) {
+            fprintf(stderr, "Surface %d was not found\n", surfaceIDs[i]);
+            continue;
+        }
+
+        ivi_controller_input_set_input_focus(ctx->wl.input_controller,
+                                             ctx_surf->id_surface,
+                                             bitmask, is_set);
+    }
+    release_instance();
+    return ILM_SUCCESS;
 }
 
 ILM_EXPORT ilmErrorTypes
