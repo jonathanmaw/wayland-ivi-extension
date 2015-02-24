@@ -165,6 +165,7 @@ WLContext::SeatHandleCapabilities(void* data, struct wl_seat* seat, uint32_t cap
         wl_touch_destroy(wlTouch);
         wlTouch = NULL;
     }
+    wl_display_dispatch(context->GetWLDisplay());
     context->SetWLTouch(wlTouch);
 }
 
