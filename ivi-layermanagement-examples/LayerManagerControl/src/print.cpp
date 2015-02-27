@@ -320,6 +320,11 @@ void printSurfaceProperties(unsigned int surfaceid, const char* prefix)
     cout << prefix << "- counters:           frame=" << p.frameCounter
             << ", draw=" << p.drawCounter << ", update=" << p.updateCounter
             << "\n";
+    cout << prefix << "- input focus:        "
+         << (p.focus & ILM_INPUT_DEVICE_POINTER ? "pointer " : "")
+         << (p.focus & ILM_INPUT_DEVICE_KEYBOARD ? "keyboard " : "")
+         << (p.focus & ILM_INPUT_DEVICE_TOUCH ? "touch" : "")
+         << "\n";
 
     cout << prefix << "- on layer:           ";
     int layerCount = 0;
