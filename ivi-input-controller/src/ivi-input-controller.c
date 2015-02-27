@@ -60,6 +60,17 @@ struct input_context {
 };
 
 static void
+send_input_focus(struct input_context *ctx, t_ilm_surface surface_id,
+                 ilmInputDevice device, t_ilm_bool enabled)
+{
+    struct input_controller *controller;
+    wl_list_for_each(controller, &ctx->controller_list, link) {
+        ivi_controller_input_send_input_focus(controller->resource, surface_id,
+                                              device, enabled);
+    }
+}
+
+static void
 keyboard_grab_key(struct weston_keyboard_grab *grab, uint32_t time,
                   uint32_t key, uint32_t state)
 {
@@ -265,8 +276,14 @@ pointer_grab_button(struct weston_pointer_grab *grab, uint32_t time,
             && state == WL_POINTER_BUTTON_STATE_RELEASED) {
             if (view->surface == surf) {
                 surf_ctx->focus |= ILM_INPUT_DEVICE_POINTER;
+                send_input_focus(seat->input_ctx,
+                                 interface->get_id_of_surface(surf_ctx->layout_surface),
+                                 ILM_INPUT_DEVICE_POINTER, ILM_TRUE);
             } else {
                 surf_ctx->focus &= ~ILM_INPUT_DEVICE_POINTER;
+                send_input_focus(seat->input_ctx,
+                                 interface->get_id_of_surface(surf_ctx->layout_surface),
+                                 ILM_INPUT_DEVICE_POINTER, ILM_FALSE);
             }
         }
     }
@@ -310,8 +327,14 @@ touch_grab_down(struct weston_touch_grab *grab, uint32_t time, int touch_id,
         if (grab->touch->num_tp == 1) {
             if (surf == grab->touch->focus->surface) {
                 surf_ctx->focus |= ILM_INPUT_DEVICE_TOUCH;
+                send_input_focus(seat->input_ctx,
+                                 interface->get_id_of_surface(surf_ctx->layout_surface),
+                                 ILM_INPUT_DEVICE_TOUCH, ILM_TRUE);
             } else {
                 surf_ctx->focus &= ~ILM_INPUT_DEVICE_TOUCH;
+                send_input_focus(seat->input_ctx,
+                                 interface->get_id_of_surface(surf_ctx->layout_surface),
+                                 ILM_INPUT_DEVICE_TOUCH, ILM_FALSE);
             }
         }
 
@@ -383,6 +406,9 @@ touch_grab_up(struct weston_touch_grab *grab, uint32_t time, int touch_id)
         if (grab->touch->num_tp == 0) {
             if (surf == grab->touch->focus->surface)
                 surf_ctx->focus &= ~ILM_INPUT_DEVICE_TOUCH;
+                send_input_focus(seat->input_ctx,
+                                 interface->get_id_of_surface(surf_ctx->layout_surface),
+                                 ILM_INPUT_DEVICE_TOUCH, ILM_FALSE);
         }
     }
 }
@@ -643,6 +669,7 @@ controller_input_set_input_focus(struct wl_client *client,
             surf->focus |= device;
         else
             surf->focus &= ~device;
+        send_input_focus(ctx, surface, device, enabled);
         found_surface = 1;
     }
 
@@ -662,6 +689,9 @@ bind_ivi_input(struct wl_client *client, void *data,
     struct input_context *ctx = data;
     struct input_controller *controller;
     struct weston_seat *seat;
+    struct surface_ctx *surface_ctx;
+    const struct ivi_controller_interface *interface =
+        ctx->ivi_controller_interface;
     controller = calloc(1, sizeof *controller);
     if (controller == NULL) {
         weston_log("%s: Failed to allocate memory for controller\n",
@@ -685,6 +715,12 @@ bind_ivi_input(struct wl_client *client, void *data,
         ivi_controller_input_send_seat_created(controller->resource,
                                                seat->seat_name,
                                                get_seat_capabilities(seat));
+    }
+    /* Send focus events for all known surfaces to the client */
+    wl_list_for_each(surface_ctx, &ctx->surface_list, link) {
+        ivi_controller_input_send_input_focus(controller->resource,
+            interface->get_id_of_surface(surface_ctx->layout_surface),
+            surface_ctx->focus, ILM_TRUE);
     }
 }
 

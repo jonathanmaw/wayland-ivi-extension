@@ -899,10 +899,29 @@ input_listener_seat_destroyed(void *data,
     free(seat);
 }
 
+static void
+input_listener_input_focus(void *data,
+                           struct ivi_controller_input *ivi_controller_input,
+                           uint32_t surface, uint32_t device, int32_t enabled)
+{
+    struct wayland_context *ctx = data;
+    struct surface_context *surf_ctx;
+    wl_list_for_each(surf_ctx, &ctx->list_surface, link) {
+        if (surface != surf_ctx->id_surface)
+            continue;
+
+        if (enabled == ILM_TRUE)
+            surf_ctx->prop.focus |= device;
+        else
+            surf_ctx->prop.focus &= ~device;
+    }
+}
+
 static struct ivi_controller_input_listener input_listener = {
     input_listener_seat_created,
     input_listener_seat_capabilities,
-    input_listener_seat_destroyed
+    input_listener_seat_destroyed,
+    input_listener_input_focus
 };
 
 static void

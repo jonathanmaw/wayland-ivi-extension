@@ -141,6 +141,35 @@ COMMAND("set|unset surfaces [<idarray>] input focus pointer|keyboard|touch|all")
 }
 
 //=============================================================================
+COMMAND("get input focus")
+//=============================================================================
+{
+    (void) input;
+    t_ilm_surface *surfaceIDs;
+    ilmInputDevice *bitmasks;
+    t_ilm_uint num_ids = 0;
+    ilmErrorTypes callResult = ilm_getInputFocus(&surfaceIDs, &bitmasks, &num_ids);
+    if (ILM_SUCCESS != callResult)
+    {
+        cout << "LayerManagerService returned: " << ILM_ERROR_STRING(callResult) << endl;
+        cout << "Failed to get input focus" << endl;
+    }
+    else
+    {
+        for (unsigned int i = 0; i < num_ids; i++)
+        {
+            cout << "surface " << surfaceIDs[i] << ": "
+                 << ((bitmasks[i] & ILM_INPUT_DEVICE_POINTER) ? "pointer " : "")
+                 << ((bitmasks[i] & ILM_INPUT_DEVICE_KEYBOARD) ? "keyboard " : "")
+                 << ((bitmasks[i] & ILM_INPUT_DEVICE_TOUCH) ? "touch" : "")
+                 << endl;
+        }
+    }
+    free(surfaceIDs);
+    free(bitmasks);
+}
+
+//=============================================================================
 COMMAND("get input device <name> capabilities")
 //=============================================================================
 {
