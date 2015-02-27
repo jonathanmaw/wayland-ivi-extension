@@ -651,6 +651,7 @@
                 If enabled is ILM_TRUE, this surface now has input focus enabled.
                 If enabled is not ILM_TRUE, this surface no longer has input focus.
             </description>
+            <arg name="surface" type="uint"/>
             <arg name="device" type="uint"/>
             <arg name="enabled" type="int"/>
         </event>
