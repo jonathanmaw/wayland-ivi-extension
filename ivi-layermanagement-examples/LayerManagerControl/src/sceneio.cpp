@@ -18,6 +18,7 @@
  ****************************************************************************/
 #include "ilm_client.h"
 #include "ilm_control.h"
+#include "ilm_control_input.h"
 #include "LMControl.h"
 #include "Expression.h"
 #include "ExpressionInterpreter.h"
@@ -64,6 +65,7 @@ void captureSceneDataHelper(t_ilm_surface surfaceId, t_scene_data* pSceneData, I
     pSurface->set("sourceY", props.sourceY);
     pSurface->set("updateCounter", props.updateCounter);
     pSurface->set("visibility", props.visibility);
+    pSurface->set("focus", props.focus);
 }
 
 void captureSceneDataHelper(t_ilm_layer layerId, t_scene_data* pSceneData, IlmLayer* pLayer)
@@ -325,6 +327,7 @@ ilmSurfaceProperties getSurfaceProperties(IlmSurface* pIlmsurface)
     pIlmsurface->get("sourceY", &(props.sourceY));
     pIlmsurface->get("updateCounter", &(props.updateCounter));
     pIlmsurface->get("visibility", &(props.visibility));
+    pIlmsurface->get("focus", &(props.focus));
 
     return props;
 }
@@ -518,6 +521,8 @@ void restoreSceneHelper(IlmSurface* pIlmsurface)
     ilm_surfaceSetDestinationRectangle(surfaceId, props.destX, props.destY, props.destWidth, props.destHeight);
     ilm_commitChanges();
     ilm_surfaceSetVisibility(surfaceId, props.visibility);
+    ilm_commitChanges();
+    ilm_setInputFocus(&surfaceId, 1, props.focus, ILM_TRUE);
     ilm_commitChanges();
 }
 
