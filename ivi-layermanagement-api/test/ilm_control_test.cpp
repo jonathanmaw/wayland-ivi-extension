@@ -29,6 +29,7 @@
 extern "C" {
     #include "ilm_client.h"
     #include "ilm_control.h"
+    #include "ilm_control_input.h"
 }
 
 template <typename T>
@@ -924,8 +925,73 @@ TEST_F(IlmCommandTest, ilm_surfaceGetPixelformat_InvalidInput) {
     ASSERT_NE(ILM_SUCCESS, ilm_surfaceGetPixelformat(0xdeadbeef, &p));
 }
 
-TEST_F(IlmCommandTest, ilm_keyboard_focus) {
-    ASSERT_EQ(ILM_SUCCESS, ILM_FAILED); /* Keyboard focus tests need to be reworked under the new API */
+TEST_F(IlmCommandTest, ilm_input_focus) {
+    const uint32_t surfaceCount = 4;
+    t_ilm_surface surfaces[] = {1010, 2020, 3030, 4040};
+    t_ilm_surface *surfaceIDs;
+    ilmInputDevice *bitmasks;
+    t_ilm_uint num_ids;
+
+    for (unsigned int i = 0; i < surfaceCount; i++) {
+        ASSERT_EQ(ILM_SUCCESS, ilm_surfaceCreate((t_ilm_nativehandle)wlSurfaces[i], 0, 0,
+                                                 ILM_PIXELFORMAT_RGBA_8888, &surfaces[i]));
+    }
+
+    ASSERT_EQ(ILM_SUCCESS, ilm_getInputFocus(&surfaceIDs, &bitmasks, &num_ids));
+    /* All the surfaces are returned */
+    ASSERT_EQ(num_ids, surfaceCount);
+    int surfaces_found = 0;
+    for (unsigned int i = 0; i < num_ids; i++) {
+        /* The bitmasks all start unset */
+        EXPECT_EQ(bitmasks[i], 0);
+        if (contains(&surfaces[0], surfaceCount, surfaceIDs[i]))
+            surfaces_found++;
+    }
+    free(surfaceIDs);
+    free(bitmasks);
+    /* The surfaces returned are the correct ones */
+    ASSERT_EQ(surfaces_found, surfaceCount);
+
+    /* Can set all focus to keyboard */
+    ASSERT_EQ(ILM_SUCCESS, ilm_setInputFocus(&surfaces[0], surfaceCount, ILM_INPUT_DEVICE_KEYBOARD, ILM_TRUE));
+
+    ASSERT_EQ(ILM_SUCCESS, ilm_getInputFocus(&surfaceIDs, &bitmasks, &num_ids));
+    for (unsigned int i = 0; i < num_ids; i++) {
+        /* All surfaces now have keyboard focus */
+        EXPECT_EQ(bitmasks[i], ILM_INPUT_DEVICE_KEYBOARD);
+    }
+    free(surfaceIDs);
+    free(bitmasks);
+
+    /* Can remove keyboard focus from one surface */
+    ASSERT_EQ(ILM_SUCCESS, ilm_setInputFocus(&surfaces[0], 1, ILM_INPUT_DEVICE_KEYBOARD, ILM_FALSE));
+    ASSERT_EQ(ILM_SUCCESS, ilm_getInputFocus(&surfaceIDs, &bitmasks, &num_ids));
+    /* keyboard focus now removed for surfaces[0] */
+    for (unsigned int i = 0; i < num_ids; i++)
+        if (surfaceIDs[i] == surfaces[0])
+            EXPECT_EQ(bitmasks[i], 0);
+    free(surfaceIDs);
+    free(bitmasks);
+
+    /* Pointer focus set for surfaces[1] */
+    ASSERT_EQ(ILM_SUCCESS, ilm_setInputFocus(&surfaces[1], 1, ILM_INPUT_DEVICE_POINTER, ILM_TRUE));
+    ASSERT_EQ(ILM_SUCCESS, ilm_getInputFocus(&surfaceIDs, &bitmasks, &num_ids));
+    /* surfaces[1] now has pointer and keyboard focus */
+    for (unsigned int i = 0; i < num_ids; i++)
+        if (surfaceIDs[i] == surfaces[1])
+            EXPECT_EQ(bitmasks[i], ILM_INPUT_DEVICE_POINTER | ILM_INPUT_DEVICE_KEYBOARD);
+    free(surfaceIDs);
+    free(bitmasks);
+
+    /* Touch focus set for surfaces[2] */
+    ASSERT_EQ(ILM_SUCCESS, ilm_setInputFocus(&surfaces[2], 1, ILM_INPUT_DEVICE_TOUCH, ILM_TRUE));
+    ASSERT_EQ(ILM_SUCCESS, ilm_getInputFocus(&surfaceIDs, &bitmasks, &num_ids));
+    /* surfaces[2] now has keyboard and touch focus */
+    for (unsigned int i = 0; i < num_ids; i++)
+        if (surfaceIDs[i] == surfaces[2])
+            EXPECT_EQ(bitmasks[i], ILM_INPUT_DEVICE_KEYBOARD | ILM_INPUT_DEVICE_TOUCH);
+    free(surfaceIDs);
+    free(bitmasks);
 }
 
 TEST_F(IlmCommandTest, ilm_input_event_acceptance) {
