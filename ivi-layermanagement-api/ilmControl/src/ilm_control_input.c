@@ -117,6 +117,14 @@ ilm_setInputFocus(t_ilm_surface *surfaceIDs, t_ilm_uint num_surfaces,
     struct ilm_control_context *ctx = sync_and_acquire_instance();
     int i;
 
+    if (bitmask & (ILM_INPUT_DEVICE_POINTER | ILM_INPUT_DEVICE_TOUCH)
+        && num_surfaces > 1 && is_set == ILM_TRUE) {
+        fprintf(stderr,
+                "Cannot set pointer or touch focus for multiple surfaces\n");
+        release_instance();
+        return ILM_FAILED;
+    }
+
     for (i = 0; i < num_surfaces; i++) {
         struct surface_context *ctx_surf;
         int found_surface = 0;
