@@ -637,16 +637,28 @@ controller_input_set_input_focus(struct wl_client *client,
     struct input_context *ctx = controller->input_context;
     int found_surface = 0;
     struct surface_ctx *surf;
-    wl_list_for_each(surf, &ctx->surface_list, link) {
-        if (ivi_layout_getIdOfSurface(surf->layout_surface) != surface)
-            continue;
 
-        if (enabled == ILM_TRUE)
-            surf->focus |= device;
-        else
-            surf->focus &= ~device;
-        send_input_focus(ctx, surface, device, enabled);
-        found_surface = 1;
+    /* If focus is enabled for one of these devices, every other surface
+     * must have focus unset */
+    const ilmInputDevice single_surface_devices =
+        ILM_INPUT_DEVICE_POINTER | ILM_INPUT_DEVICE_TOUCH;
+    ilmInputDevice single_surface_mask = single_surface_devices & device;
+
+    wl_list_for_each(surf, &ctx->surface_list, link) {
+        uint32_t current_surface =
+            ivi_layout_getIdOfSurface(surf->layout_surface);
+        if (current_surface == surface) {
+            if (enabled == ILM_TRUE) {
+                surf->focus |= device;
+            } else {
+                surf->focus &= ~device;
+            }
+            send_input_focus(ctx, current_surface, device, enabled);
+            found_surface = 1;
+        } else if (single_surface_mask && enabled == ILM_TRUE) {
+            surf->focus &= ~(single_surface_mask);
+            send_input_focus(ctx, current_surface, single_surface_mask, ILM_FALSE);
+        }
     }
 
     if (!found_surface) {
