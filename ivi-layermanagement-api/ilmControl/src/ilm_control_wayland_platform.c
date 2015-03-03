@@ -787,6 +787,7 @@ controller_listener_surface(void *data,
     wl_list_init(&ctx_surf->link);
     wl_list_insert(&ctx->list_surface, &ctx_surf->link);
     wl_list_init(&ctx_surf->order.link);
+    wl_list_init(&ctx_surf->list_accepted_seats);
     ivi_controller_surface_add_listener(ctx_surf->controller,
                                         &controller_surface_listener, ctx_surf);
 }
@@ -916,11 +917,72 @@ input_listener_input_focus(void *data,
     }
 }
 
+static void
+input_listener_input_acceptance(void *data,
+                                struct ivi_controller_input *ivi_controller_input,
+                                uint32_t surface,
+                                const char *seat,
+                                int32_t accepted)
+{
+    struct accepted_seat *accepted_seat, *next;
+    struct wayland_context *ctx = data;
+    struct surface_context *surface_ctx = NULL;
+    int surface_found = 1;
+    int accepted_seat_found = 0;
+
+    wl_list_for_each(surface_ctx, &ctx->list_surface, link) {
+        if (surface_ctx->id_surface == surface) {
+            surface_found = 1;
+            break;
+        }
+    }
+
+    if (!surface_found) {
+        fprintf(stderr, "Warning: input acceptance event received for "
+                "nonexistent surface %d\n", surface);
+        return;
+    }
+
+    wl_list_for_each_safe(accepted_seat, next,
+                          &surface_ctx->list_accepted_seats, link) {
+        if (strcmp(accepted_seat->seat_name, seat) != 0)
+            continue;
+
+        if (accepted != ILM_TRUE) {
+            /* Remove this from the accepted seats */
+            free(accepted_seat->seat_name);
+            wl_list_remove(&accepted_seat->link);
+            return;
+        }
+        accepted_seat_found = 1;
+    }
+
+    if (accepted_seat_found && accepted == ILM_TRUE) {
+        fprintf(stderr, "Warning: input acceptance event trying to add seat "
+                "%s, that is already in surface %d\n", seat, surface);
+        return;
+    } 
+    if (!accepted_seat_found && accepted != ILM_TRUE) {
+        fprintf(stderr, "Warning: input acceptance event trying to remove "
+                "seat %s, that is not in surface %d\n", seat, surface);
+        return;
+    }
+
+    accepted_seat = calloc(1, sizeof(accepted_seat));
+    if (accepted_seat == NULL) {
+        fprintf(stderr, "Failed to allocate memory for accepted seat\n");
+        return;
+    }
+    accepted_seat->seat_name = strdup(seat);
+    wl_list_insert(&surface_ctx->list_accepted_seats, &accepted_seat->link);
+}
+
 static struct ivi_controller_input_listener input_listener = {
     input_listener_seat_created,
     input_listener_seat_capabilities,
     input_listener_seat_destroyed,
-    input_listener_input_focus
+    input_listener_input_focus,
+    input_listener_input_acceptance
 };
 
 static void
