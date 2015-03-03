@@ -68,5 +68,32 @@
             <arg name="device" type="uint"/>
             <arg name="enabled" type="int"/>
         </event>
+
+        <request name="set_input_acceptance">
+            <description summary="set a surface's input acceptance for a seat">
+                Set input acceptance of one seat for a surface. Surfaces may
+                accept input acceptance from multiple seats at once.
+                If argument 'accepted' is ILM_TRUE, the given seat's name will
+                be added to the list of accepted seats.
+                If argument 'accepted' is not ILM_TRUE, the given seat's name
+                will be removed from the list of accepted seats.
+            </description>
+            <arg name="surface" type="uint"/>
+            <arg name="seat" type="string"/>
+            <arg name="accepted" type="int"/>
+        </request>
+
+        <event name="input_acceptance">
+            <description summary="input acceptance has changed">
+                A surface has changed its input acceptance for a specific seat.
+                If argument 'accepted' is ILM_TRUE, the surface now accepts
+                the seat.
+                If argument 'accepted' is not ILM_TRUE, the surface no longer
+                accepts the seat.
+            </description>
+            <arg name="surface" type="uint"/>
+            <arg name="seat" type="string"/>
+            <arg name="accepted" type="int"/>
+        </event>
     </interface>
 </protocol>
