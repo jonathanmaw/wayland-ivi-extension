@@ -21,6 +21,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "weston/compositor.h"
 #include "ilm_types.h"
@@ -41,6 +42,7 @@ struct surface_ctx {
     struct wl_list link;
     ilmInputDevice focus;
     struct ivi_layout_surface *layout_surface;
+    struct wl_array accepted_devices;
 };
 
 struct input_controller {
@@ -57,6 +59,76 @@ struct input_context {
     struct wl_list surface_list;
     struct weston_compositor *compositor;
 };
+
+static int
+get_accepted_seat(struct surface_ctx *surface, const char *seat)
+{
+    int i;
+    char **arr = surface->accepted_devices.data;
+    for (i = 0; i < (surface->accepted_devices.size / sizeof(char**)); i++) {
+        if (strcmp(arr[i], seat) == 0)
+            return i;
+    }
+    return -1;
+}
+
+static int
+add_accepted_seat(struct surface_ctx *surface, const char *seat)
+{
+    char **added_entry;
+    if (get_accepted_seat(surface, seat) >= 0) {
+        weston_log("%s: Warning: seat '%s' is already accepted by surface %d\n",
+                   __FUNCTION__, seat,
+                   ivi_layout_getIdOfSurface(surface->layout_surface));
+        return 1;
+    }
+    added_entry = wl_array_add(&surface->accepted_devices, sizeof *added_entry);
+    if (added_entry == NULL) {
+        weston_log("%s: Failed to expand accepted devices array for "
+                   "surface %d\n", __FUNCTION__,
+                   ivi_layout_getIdOfSurface(surface->layout_surface));
+        return 0;
+    }
+    *added_entry = strdup(seat);
+    if (*added_entry == NULL) {
+        weston_log("%s: Failed to duplicate seat name '%s'\n",
+                   __FUNCTION__, seat);
+        return 0;
+    }
+    return 1;
+}
+
+static int
+remove_accepted_seat(struct surface_ctx *surface, const char *seat)
+{
+    int seat_index = get_accepted_seat(surface, seat);
+    int i;
+    struct wl_array *array = &surface->accepted_devices;
+    char **data = array->data;
+    if (seat_index < 0) {
+        weston_log("%s: Warning: seat '%s' not found for surface %d\n",
+                  __FUNCTION__, seat,
+                  ivi_layout_getIdOfSurface(surface->layout_surface));
+        return 0;
+    }
+    free(data[seat_index]);
+    for (i = seat_index + 1; i < array->size / sizeof(char **); i++)
+        data[i - 1] = data[i];
+    array->size-= sizeof(char**);
+
+    return 1;
+}
+
+static void
+send_input_acceptance(struct input_context *ctx, uint32_t surface_id, const char *seat, int32_t accepted)
+{
+    struct input_controller *controller;
+    wl_list_for_each(controller, &ctx->controller_list, link) {
+        ivi_controller_input_send_input_acceptance(controller->resource,
+                                                   surface_id, seat,
+                                                   accepted);
+    }
+}
 
 static void
 send_input_focus(struct input_context *ctx, t_ilm_surface surface_id,
@@ -579,7 +651,13 @@ handle_surface_destroy(struct ivi_layout_surface *layout_surface, void *data)
 
     wl_list_for_each_safe(surf, next, &ctx->surface_list, link) {
         if (surf->layout_surface == layout_surface) {
+            uint32_t i;
+            char **data = surf->accepted_devices.data;
             wl_list_remove(&surf->link);
+            for (i = 0; i < surf->accepted_devices.size / sizeof(char**); i++) {
+                free(data[i]);
+	    }
+            wl_array_release(&surf->accepted_devices);
             free(surf);
             surface_removed = 1;
             break;
@@ -613,6 +691,7 @@ handle_surface_create(struct ivi_layout_surface *layout_surface, void *data)
         return;
     }
     ctx->layout_surface = layout_surface;
+    wl_array_init(&ctx->accepted_devices);
 
     wl_list_insert(&input_ctx->surface_list, &ctx->link);
 }
@@ -666,8 +745,34 @@ controller_input_set_input_focus(struct wl_client *client,
     }
 }
 
+static void
+controller_input_set_input_acceptance(struct wl_client *client,
+                                      struct wl_resource *resource,
+                                      uint32_t surface, const char *seat,
+                                      int32_t accepted)
+{
+    struct input_controller *controller = wl_resource_get_user_data(resource);
+    struct input_context *ctx = controller->input_context;
+    struct surface_ctx *surface_ctx;
+    int found_seat = 0;
+
+    wl_list_for_each(surface_ctx, &ctx->surface_list, link) {
+        if (ivi_layout_getIdOfSurface(surface_ctx->layout_surface) == surface) {
+            if (accepted == ILM_TRUE)
+                found_seat = add_accepted_seat(surface_ctx, seat);
+            else
+                found_seat = remove_accepted_seat(surface_ctx, seat);
+            break;
+        }
+    }
+
+    if (found_seat)
+        send_input_acceptance(ctx, surface, seat, accepted);
+}
+
 static const struct ivi_controller_input_interface input_implementation = {
-    controller_input_set_input_focus
+    controller_input_set_input_focus,
+    controller_input_set_input_acceptance
 };
 
 static void
@@ -708,6 +813,15 @@ bind_ivi_input(struct wl_client *client, void *data,
         ivi_controller_input_send_input_focus(controller->resource,
             ivi_layout_getIdOfSurface(surface_ctx->layout_surface),
             surface_ctx->focus, ILM_TRUE);
+    }
+    /* Send acceptance events for all known surfaces to the client */
+    wl_list_for_each(surface_ctx, &ctx->surface_list, link) {
+        char **name;
+        wl_array_for_each(name, &surface_ctx->accepted_devices) {
+            ivi_controller_input_send_input_acceptance(controller->resource,
+                    ivi_layout_getIdOfSurface(surface_ctx->layout_surface),
+                    *name, ILM_TRUE);
+        }
     }
 }
 
