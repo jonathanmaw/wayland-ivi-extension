@@ -157,7 +157,8 @@ keyboard_grab_key(struct weston_keyboard_grab *grab, uint32_t time,
         if (!(surf_ctx->focus & ILM_INPUT_DEVICE_KEYBOARD))
             continue;
 
-        /* TODO: Seat acceptance */
+        if (get_accepted_seat(surf_ctx, grab->keyboard->seat->seat_name) < 0)
+            continue;
 
         surface = ivi_layout_surfaceGetWestonSurface(surf_ctx->layout_surface);
         surface_client = wl_resource_get_client(surface->resource);
@@ -197,7 +198,8 @@ keyboard_grab_modifiers(struct weston_keyboard_grab *grab, uint32_t serial,
               & (ILM_INPUT_DEVICE_KEYBOARD | ILM_INPUT_DEVICE_POINTER)))
             continue;
 
-        /* TODO: Seat acceptance */
+        if (get_accepted_seat(surf_ctx, grab->keyboard->seat->seat_name) < 0)
+            continue;
 
         surface = ivi_layout_surfaceGetWestonSurface(surf_ctx->layout_surface);
         surface_client = wl_resource_get_client(surface->resource);
@@ -259,6 +261,9 @@ pointer_grab_motion(struct weston_pointer_grab *grab, uint32_t time,
         if (!(surf_ctx->focus & ILM_INPUT_DEVICE_POINTER))
             continue;
 
+        if (get_accepted_seat(surf_ctx, grab->pointer->seat->seat_name) < 0)
+            continue;
+
         /* Assume one view per surface */
         surf = ivi_layout_surfaceGetWestonSurface(surf_ctx->layout_surface);
         view = wl_container_of(surf->views.next, view, surface_link);
@@ -312,7 +317,8 @@ pointer_grab_button(struct weston_pointer_grab *grab, uint32_t time,
 
         surf = ivi_layout_surfaceGetWestonSurface(surf_ctx->layout_surface);
 
-        /* TODO: Filter by seat acceptance */
+        if (get_accepted_seat(surf_ctx, grab->pointer->seat->seat_name) < 0)
+            continue;
 
         /* Send to surfaces that have pointer focus */
         if (surf_ctx->focus & ILM_INPUT_DEVICE_POINTER) {
@@ -381,7 +387,8 @@ touch_grab_down(struct weston_touch_grab *grab, uint32_t time, int touch_id,
 
         surf = ivi_layout_surfaceGetWestonSurface(surf_ctx->layout_surface);
 
-        /* TODO: Exclude surfaces that don't accept this seat */
+        if (get_accepted_seat(surf_ctx, grab->touch->seat->seat_name) < 0)
+            continue;
 
         /* Touches set touch focus */
         if (grab->touch->num_tp == 1) {
@@ -438,9 +445,10 @@ touch_grab_up(struct weston_touch_grab *grab, uint32_t time, int touch_id)
         struct wl_client *surface_client;
         uint32_t serial;
         
-        /* TODO: Exclude surfaces that don't accept this seat */
-
         if (!(surf_ctx->focus & ILM_INPUT_DEVICE_TOUCH))
+            continue;
+
+        if (get_accepted_seat(surf_ctx, grab->touch->seat->seat_name) < 0)
             continue;
 
         surf = ivi_layout_surfaceGetWestonSurface(surf_ctx->layout_surface);
@@ -487,6 +495,9 @@ touch_grab_motion(struct weston_touch_grab *grab, uint32_t time, int touch_id,
         if (!(surf_ctx->focus & ILM_INPUT_DEVICE_TOUCH))
             continue;
 
+        if (get_accepted_seat(surf_ctx, grab->touch->seat->seat_name) < 0)
+            continue;
+
         surf = ivi_layout_surfaceGetWestonSurface(surf_ctx->layout_surface);
         surface_client = wl_resource_get_client(surf->resource);
         wl_resource_for_each(resource, &grab->touch->resource_list) {
@@ -518,6 +529,9 @@ touch_grab_frame(struct weston_touch_grab *grab)
         struct wl_client *surface_client;
         
         if (!(surf_ctx->focus & ILM_INPUT_DEVICE_TOUCH))
+            continue;
+
+        if (get_accepted_seat(surf_ctx, grab->touch->seat->seat_name) < 0)
             continue;
 
         surf = ivi_layout_surfaceGetWestonSurface(surf_ctx->layout_surface);
