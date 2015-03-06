@@ -191,6 +191,79 @@ COMMAND("get input device <name> capabilities")
 }
 
 //=============================================================================
+COMMAND("set surface <surfaceid> input acceptance to [<namearray>]")
+//=============================================================================
+{
+    t_ilm_string *array = NULL;
+    t_ilm_uint count = 0;
+    t_ilm_surface surfaceid = input->getUint("surfaceid");
+    string str = input->getString("namearray");
+    size_t pos;
+    unsigned int i;
+
+    // Generate a string array
+    count = std::count(str.begin(), str.end(), ',') + 1;
+    array = (t_ilm_string *)calloc(count, sizeof *array);
+    if (array == NULL) {
+        cerr << "Failed to allocate memory for string array" << endl;
+        return;
+    }
+
+    i = 0;
+    while(true) {
+        pos = str.find(",");
+        string token = str.substr(0, pos);
+        array[i] = strdup(token.c_str());
+        if (array[i] == NULL) {
+            cerr << "Failed to duplicate string: " << token << endl;
+            for (int j = 0; j < i; j++)
+                free(array[i]);
+            free(array);
+            return;
+        }
+        str.erase(0, pos + 1);
+        i++;
+        if (pos == std::string::npos)
+            break;
+    }
+
+    ilmErrorTypes callResult = ilm_setInputAcceptanceOn(surfaceid, count, array);
+    if (ILM_SUCCESS != callResult)
+    {
+        cout << "LayerManagerService returned: " << ILM_ERROR_STRING(callResult)
+             << endl;
+        cout << "Failed to set acceptance for surface " << surfaceid << endl;
+    }
+    for (uint i = 0; i < count; i++)
+        free(array[i]);
+    free(array);
+}
+
+//=============================================================================
+COMMAND("get surface <surfaceid> input acceptance")
+//=============================================================================
+{
+    t_ilm_string *array = NULL;
+    t_ilm_uint num_seats;
+    t_ilm_surface surfaceid = input->getUint("surfaceid");
+
+    ilmErrorTypes callResult = ilm_getInputAcceptanceOn(surfaceid, &num_seats,
+                                                        &array);
+    if (ILM_SUCCESS != callResult)
+    {
+        cout << "LayerManagerService returned: " << ILM_ERROR_STRING(callResult)
+             << endl;
+        cout << "Failed to get acceptance for surface " << surfaceid << endl;
+        return;
+    }
+
+    for (uint i = 0; i < num_seats; i++) {
+        cout << array[i] << endl;
+        free(array[i]);
+    }
+    free(array);
+}
+//=============================================================================
 COMMAND("get scene|screens|layers|surfaces")
 //=============================================================================
 {
