@@ -720,6 +720,10 @@ handle_surface_create(struct ivi_layout_surface *layout_surface, void *data)
     ctx->layout_surface = layout_surface;
     ctx->input_context = input_ctx;
     wl_array_init(&ctx->accepted_devices);
+    add_accepted_seat(ctx, "default");
+    send_input_acceptance(input_ctx,
+                          interface->get_id_of_surface(layout_surface),
+                          "default", ILM_TRUE);
 
     wl_list_insert(&input_ctx->surface_list, &ctx->link);
 }
