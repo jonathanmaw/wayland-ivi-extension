@@ -19,6 +19,7 @@
 
 #include "ilm_client.h"
 #include "ilm_control.h"
+#include "ilm_control_input.h"
 #include "LMControl.h"
 
 #include <algorithm>
@@ -288,6 +289,27 @@ void captureSceneData(t_scene_data* pScene)
         }
 
         scene.surfaceProperties[surfaceId] = sp;
+    }
+
+    //accepted devices on each surface
+    for (int i = 0; i < surfaceCount; ++i)
+    {
+        t_ilm_uint seatCount = 0;
+        t_ilm_string *seatArray = NULL;
+        t_ilm_surface surfaceID = surfaceArray[i];
+        
+        callResult = ilm_getInputAcceptanceOn(surfaceID, &seatCount,
+                                              &seatArray);
+        if (ILM_SUCCESS != callResult)
+        {
+            cout << "LayerManagerService returned: "
+                 << ILM_ERROR_STRING(callResult) << endl;
+            cout << "Failed to get input acceptance for surface with ID "
+                 << surfaceID << endl;
+            return;
+        }
+        scene.surfaceAcceptedDevices[surfaceID] =
+            vector<t_ilm_string>(seatArray, seatArray + seatCount);
     }
 }
 

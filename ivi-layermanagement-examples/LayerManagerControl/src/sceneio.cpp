@@ -66,6 +66,18 @@ void captureSceneDataHelper(t_ilm_surface surfaceId, t_scene_data* pSceneData, I
     pSurface->set("updateCounter", props.updateCounter);
     pSurface->set("visibility", props.visibility);
     pSurface->set("focus", props.focus);
+
+    if (pSceneData->surfaceAcceptedDevices.find(surfaceId)
+        != pSceneData->surfaceAcceptedDevices.end())
+    {
+        for (vector<t_ilm_string>::iterator it = pSceneData->surfaceAcceptedDevices[surfaceId].begin();
+             it != pSceneData->surfaceAcceptedDevices[surfaceId].end(); ++it)
+        {
+            IlmSeat *pSeat = new IlmSeat;
+            pSeat->set("accepted", string(*it));
+            pSurface->add(pSeat);
+        }
+    }
 }
 
 void captureSceneDataHelper(t_ilm_layer layerId, t_scene_data* pSceneData, IlmLayer* pLayer)
@@ -524,6 +536,18 @@ void restoreSceneHelper(IlmSurface* pIlmsurface)
     ilm_commitChanges();
     ilm_setInputFocus(&surfaceId, 1, props.focus, ILM_TRUE);
     ilm_commitChanges();
+
+    list<IlmSeat *> seatList;
+    vector<t_ilm_string> acceptedSeats;
+    pIlmsurface->get(&seatList);
+    for (list<IlmSeat*>::iterator it = seatList.begin(); it != seatList.end(); ++it)
+    {
+        string accepted;
+        (*it)->get("accepted", &accepted);
+        acceptedSeats.push_back(strdup(accepted.c_str()));
+    }
+    ilm_setInputAcceptanceOn(surfaceId, acceptedSeats.size(),
+                             acceptedSeats.data());
 }
 
 void restoreSceneHelper(IlmLayer* pIlmlayer)

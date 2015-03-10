@@ -554,6 +554,11 @@ public:\
 //**************************************************************************************************************************//
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+OBJECT(IlmSeat)
+    PROPERTY(string, accepted)
+    /***/
+OBJECTEND
+
 OBJECT(IlmSurface)
     PROPERTY(t_ilm_surface, id)
     PROPERTY(t_ilm_float, opacity)
@@ -576,6 +581,7 @@ OBJECT(IlmSurface)
     PROPERTY(t_ilm_uint, nativeSurface)
     PROPERTY(ilmInputDevice, focus)
     /***/
+    CONTAINS(IlmSeat)
 OBJECTEND
 
 OBJECT(IlmLayer)
