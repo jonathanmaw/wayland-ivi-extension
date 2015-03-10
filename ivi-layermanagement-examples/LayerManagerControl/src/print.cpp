@@ -19,7 +19,10 @@
 
 #include "ilm_client.h"
 #include "ilm_control.h"
+#include "ilm_control_input.h"
 #include "LMControl.h"
+
+#include <stdlib.h>
 
 #include <iostream>
 using std::cout;
@@ -316,6 +319,24 @@ void printSurfaceProperties(unsigned int surfaceid, const char* prefix)
     }
 
     cout << prefix << "- native surface:     " << p.nativeSurface << "\n";
+
+    cout << prefix << "- accepts input from: ";
+    t_ilm_uint seat_count = 0;
+    t_ilm_string *seat_array = NULL;
+    callResult = ilm_getInputAcceptanceOn(surfaceid, &seat_count, &seat_array);
+    if (ILM_SUCCESS != callResult)
+    {
+        cout << "LayerManagerService returned: " << ILM_ERROR_STRING(callResult) << "\n";
+        cout << "Failed to get accepted devices\n";
+        return;
+    }
+    for (t_ilm_uint i = 0; i < seat_count; ++i)
+    {
+        cout << seat_array[i] << " ";
+	free(seat_array[i]);
+    }
+    cout << endl;
+    free(seat_array);
 
     cout << prefix << "- counters:           frame=" << p.frameCounter
             << ", draw=" << p.drawCounter << ", update=" << p.updateCounter
