@@ -46,6 +46,8 @@ struct t_scene_data
     map<t_ilm_layer, t_ilm_display> layerScreen;
     map<t_ilm_surface, t_ilm_layer> surfaceLayer;
 
+    map<t_ilm_surface, vector<t_ilm_string> > surfaceAcceptedDevices;
+
     vector<t_ilm_surface> surfaces;
     vector<t_ilm_surface> layers;
     vector<t_ilm_display> screens;
