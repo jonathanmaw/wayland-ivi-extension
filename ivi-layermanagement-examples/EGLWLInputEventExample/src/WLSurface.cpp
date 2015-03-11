@@ -22,6 +22,7 @@
 #include <string.h>
 #include <assert.h>
 #include "WLSurface.h"
+#include "ilm_client.h"
 #include "ilm_control.h"
 
 WLSurface::WLSurface(WLContext* wlContext)
@@ -49,12 +50,17 @@ WLSurface::CreateSurface(const int width, const int height)
     m_width  = width;
     m_height = height;
 
-    m_wlSurface = (struct wl_surface*)
-        wl_compositor_create_surface(m_wlContext->GetWLCompositor());
+    t_ilm_nativehandle nativehandle;
+    ilmErrorTypes retval = ilm_generateNativeHandle(&nativehandle);
+    if (ILM_SUCCESS != retval) {
+        fprintf(stderr, "Failed to generate native handle");
+        return false;
+    }
+    m_wlSurface = (struct wl_surface*) nativehandle;
+
     if (!m_wlSurface){
         return false;
     }
-
     return CreatePlatformSurface();
 }
 
