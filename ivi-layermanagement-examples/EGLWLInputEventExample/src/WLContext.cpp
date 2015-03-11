@@ -47,7 +47,6 @@ static struct wl_seat_listener seatListener = {
 WLContext::WLContext()
 : m_wlDisplay(NULL)
 , m_wlRegistry(NULL)
-, m_wlCompositor(NULL)
 , m_wlSeat(NULL)
 , m_wlPointer(NULL)
 , m_wlTouch(NULL)
@@ -79,15 +78,6 @@ WLContext::RegistryHandleGlobal(void* data,
     assert(surface);
 
     do {
-        if (!strcmp(interface, "wl_compositor")){
-            surface->SetWLCompositor(
-                (wl_compositor*)wl_registry_bind(registry,
-                                                name,
-                                                &wl_compositor_interface,
-                                                1));
-            break;
-        }
-
         if (!strcmp(interface, "serverinfo")){
             struct serverinfo* wlServerInfo = (struct serverinfo*)wl_registry_bind(
                 registry, name, &serverinfo_interface, 1);
@@ -193,6 +183,4 @@ WLContext::InitWLContext(const struct wl_pointer_listener* wlPointerListener,
 void
 WLContext::DestroyWLContext()
 {
-    if (m_wlCompositor)
-        wl_compositor_destroy(m_wlCompositor);
 }
