@@ -161,6 +161,15 @@ ilmErrorTypes ilm_surfaceSetNativeContent(t_ilm_nativehandle nativehandle,
  */
 ilmErrorTypes ilm_surfaceSetSourceRectangle(t_ilm_surface surfaceId, t_ilm_int x, t_ilm_int y, t_ilm_int width, t_ilm_int height);
 
+
+/**
+ * \brief Create a handle to the native content of a surface
+ * \ingroup ilmClient
+ * \param[out] nativehandle The native windowsystem's handle for the surface
+ * \return ILM_SUCCESS if the method call was successful
+ * \return ILM_FAILED if the client could not call the method
+ */
+ilmErrorTypes ilm_generateNativeHandle(t_ilm_nativehandle *nativehandle);
 #ifdef __cplusplus
 } /**/
 #endif /* __cplusplus */
