@@ -44,6 +44,7 @@ static ilmErrorTypes wayland_surfaceSetNativeContent(
 static ilmErrorTypes wayland_init(t_ilm_nativedisplay nativedisplay);
 static void wayland_destroy(void);
 static ilmErrorTypes wayland_surfaceInitialize(t_ilm_surface *pSurfaceId);
+static ilmErrorTypes wayland_generateNativeHandle(t_ilm_nativehandle *nativehandle);
 
 void init_ilmClientPlatformTable(void)
 {
@@ -63,6 +64,8 @@ void init_ilmClientPlatformTable(void)
         wayland_destroy;
     gIlmClientPlatformFunc.surfaceInitialize =
         wayland_surfaceInitialize;
+    gIlmClientPlatformFunc.generateNativeHandle =
+        wayland_generateNativeHandle;
 }
 
 struct surface_context {
@@ -213,6 +216,13 @@ registry_handle_client(void *data, struct wl_registry *registry,
             fprintf(stderr, "Failed to registry bind ivi_application\n");
             return;
         }
+    } else if (strcmp(interface, "wl_compositor") == 0) {
+        ctx->compositor =
+            wl_registry_bind(registry, name, &wl_compositor_interface, 1);
+        if (ctx->compositor == NULL) {
+            fprintf(stderr, "Failed to registry bind wl_compositor\n");
+            return;
+        }
     }
 }
 
@@ -310,6 +320,10 @@ destroy_client_resouses(void)
     if (ctx->ivi_application != NULL) {
         ivi_application_destroy(ctx->ivi_application);
         ctx->ivi_application = NULL;
+    }
+    if (ctx->compositor != NULL) {
+        wl_compositor_destroy(ctx->compositor);
+        ctx->compositor = NULL;
     }
 
     if (ctx->registry)
@@ -575,4 +589,17 @@ wayland_surfaceInitialize(t_ilm_surface *pSurfaceId)
                                         100, 100, (ilmPixelFormat)NULL,
                                         (t_ilm_surface*)pSurfaceId);
     return returnValue;
+}
+
+static ilmErrorTypes
+wayland_generateNativeHandle(t_ilm_nativehandle *nativehandle)
+{
+    struct ilm_client_context *ctx = get_client_instance();
+    if (ctx->compositor == NULL) {
+        fprintf(stderr, "Compositor interface not found\n");
+        return ILM_FAILED;
+    }
+    *nativehandle =
+        (t_ilm_nativehandle)wl_compositor_create_surface(ctx->compositor);
+    return ILM_SUCCESS;
 }

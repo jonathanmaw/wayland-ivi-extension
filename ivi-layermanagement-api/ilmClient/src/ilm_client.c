@@ -92,3 +92,9 @@ ilm_surfaceInitialize(t_ilm_surface *pSurfaceId)
 {
     return gIlmClientPlatformFunc.surfaceInitialize(pSurfaceId);
 }
+
+ILM_EXPORT ilmErrorTypes
+ilm_generateNativeHandle(t_ilm_nativehandle *nativehandle)
+{
+    return gIlmClientPlatformFunc.generateNativeHandle(nativehandle);
+}

@@ -40,6 +40,7 @@ typedef struct _ILM_CLIENT_PLATFORM_FUNC
     ilmErrorTypes (*init)(t_ilm_nativedisplay nativedisplay);
     void (*destroy)();
     ilmErrorTypes (*surfaceInitialize)(t_ilm_surface *pSurfaceId);
+    ilmErrorTypes (*generateNativeHandle)(t_ilm_nativehandle *nativehandle);
 } ILM_CLIENT_PLATFORM_FUNC;
 
 ILM_CLIENT_PLATFORM_FUNC gIlmClientPlatformFunc;
