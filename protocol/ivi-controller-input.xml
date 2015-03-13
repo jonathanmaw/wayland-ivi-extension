@@ -43,5 +43,30 @@
             </description>
             <arg name="name" type="string"/>
         </event>
+        <request name="set_input_focus">
+            <description summary="set input focus for a given surface ID">
+                Set input focus state of surface in ivi compositor. If the surface has input
+                focus, all non-graphical inputs (e.g. keyboard) are directed to the application
+                providing the content for this surface.
+                Multiple surfaces can have input focus at a time.
+                If argument enabled is ILM_TRUE, input focus for this surface is enabled.
+                If argument enabled is not ILM_TRUE, the input focus from this surface is removed.
+            </description>
+
+            <arg name="surface" type="uint"/>
+            <arg name="device" type="uint"/>
+            <arg name="enabled" type="int"/>
+        </request>
+
+        <event name="input_focus">
+            <description summary="input focus of surface in ivi compositor has changed">
+                The new input focus state is provided in argument enabled:
+                If enabled is ILM_TRUE, this surface now has input focus enabled.
+                If enabled is not ILM_TRUE, this surface no longer has input focus.
+            </description>
+            <arg name="surface" type="uint"/>
+            <arg name="device" type="uint"/>
+            <arg name="enabled" type="int"/>
+        </event>
     </interface>
 </protocol>

@@ -48,6 +48,7 @@ struct input_controller {
     struct wl_resource *resource;
     struct wl_client *client;
     uint32_t id;
+    struct input_context *input_context;
 };
 
 struct input_context {
@@ -299,6 +300,38 @@ unbind_resource_controller(struct wl_resource *resource)
 }
 
 static void
+controller_input_set_input_focus(struct wl_client *client,
+                                 struct wl_resource *resource,
+                                 uint32_t surface, uint32_t device,
+                                 int32_t enabled)
+{
+    struct input_controller *controller = wl_resource_get_user_data(resource);
+    struct input_context *ctx = controller->input_context;
+    int found_surface = 0;
+    struct surface_ctx *surf;
+    const struct ivi_controller_interface *interface =
+	ctx->ivi_controller_interface;
+    wl_list_for_each(surf, &ctx->surface_list, link) {
+        if (interface->get_id_of_surface(surf->layout_surface) != surface)
+            continue;
+
+        if (enabled == ILM_TRUE)
+            surf->focus |= device;
+        else
+            surf->focus &= ~device;
+        found_surface = 1;
+    }
+
+    if (!found_surface) {
+        weston_log("%s: surface %d was not found\n", __FUNCTION__, surface);
+    }
+}
+
+static const struct ivi_controller_input_interface input_implementation = {
+    controller_input_set_input_focus
+};
+
+static void
 bind_ivi_input(struct wl_client *client, void *data,
                uint32_t version, uint32_t id)
 {
@@ -312,9 +345,10 @@ bind_ivi_input(struct wl_client *client, void *data,
         return;
     }
 
+    controller->input_context = ctx;
     controller->resource =
         wl_resource_create(client, &ivi_controller_input_interface, 1, id);
-    wl_resource_set_implementation(controller->resource, NULL,
+    wl_resource_set_implementation(controller->resource, &input_implementation,
                                    controller, unbind_resource_controller);
 
     controller->client = client;
