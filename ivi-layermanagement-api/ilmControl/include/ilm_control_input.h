@@ -117,6 +117,16 @@ ilmErrorTypes
 ilm_getInputFocus(t_ilm_surface **surfaceIDs, ilmInputDevice** bitmasks,
                   t_ilm_uint *num_ids);
 
+/**
+ * \brief      Get whether the ivi-input-controller module is running
+ * \param[out] is_running  ILM_TRUE if the module is running, ILM_FALSE if not
+ * \return     ILM_SUCCESS if the method call was successful
+ * \return     ILM_FAILED  if context could not be acquired
+ */
+ilmErrorTypes
+ilm_input_controller_running(t_ilm_bool *is_running);
+
+
 #ifdef __cplusplus
 } /**/
 #endif /* __cplusplus */
