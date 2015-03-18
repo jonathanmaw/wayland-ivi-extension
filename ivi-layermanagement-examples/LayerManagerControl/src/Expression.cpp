@@ -23,6 +23,8 @@
 #include <string.h>  // memcpy
 #include <algorithm>
 
+#include "ilm_control_input.h"
+
 Expression::Expression(string name, Expression* parent)
 : mName(name)
 , mPreviousWord(parent)
@@ -388,13 +390,49 @@ void Expression::printTree(int level)
     }
 }
 
+static const char *input_only_expressions[] = {
+    "get input devices with pointer|keyboard|touch|all",
+    "set|unset surfaces [<idarray>] input focus pointer|keyboard|touch|all",
+    "get input focus",
+    "get input device <name> capabilities",
+    "set surface <surfaceid> input acceptance to [<namearray>]",
+    "get surface <surfaceid> input acceptance"
+};
+
+static bool expression_is_input_only(string expression)
+{
+    for (unsigned int i = 0; i < sizeof input_only_expressions / sizeof (char *); i++)
+    {
+        if (expression.find(input_only_expressions[i]) != string::npos)
+            return true;
+    }
+    return false;
+}
+
+static bool should_print_expression(string expression)
+{
+    if (expression_is_input_only(expression))
+    {
+        t_ilm_bool input_controller_running;
+        if (ilm_input_controller_running(&input_controller_running) == ILM_FAILED)
+        {
+            cerr << "LayerManagerControl failed to get whether "
+                    "ivi-input-controller is running" << endl;
+            return false;
+        }
+        if (!input_controller_running)
+            return false;
+    }
+    return true;
+}
+
 void Expression::printList(string list)
 {
     if (mName != "[root]")
     {
         list += mName;
         list += " ";
-        if (isExecutable())
+        if (isExecutable() && should_print_expression(list))
         {
             cout << list << "\n";
         }
