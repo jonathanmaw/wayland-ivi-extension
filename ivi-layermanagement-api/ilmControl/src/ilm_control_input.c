@@ -280,3 +280,12 @@ ilm_getInputFocus(t_ilm_surface **surfaceIDs, ilmInputDevice **bitmasks,
     return ILM_SUCCESS;
 
 }
+
+ILM_EXPORT t_ilm_bool
+ilm_input_controller_running(t_ilm_bool *is_running)
+{
+    struct ilm_control_context *ctx = sync_and_acquire_instance();
+    *is_running = (ctx->wl.input_controller != NULL) ? ILM_TRUE : ILM_FALSE;
+    release_instance();
+    return ILM_SUCCESS;
+}
